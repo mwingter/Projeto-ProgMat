@@ -1,3 +1,5 @@
+#!python3
+
 from ortools.linear_solver import pywraplp
 import itertools
 import numpy as np
