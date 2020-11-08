@@ -12,8 +12,8 @@ import re
 #
  #	~ Trabalho: Parte 1 ~
  #
- #	Julia (Nº USP XXXXX)
- #	Michelle (Nº USP XXXXX)
+ #	Julia Carolina Frare Peixoto (Nº USP 10734727)
+ #	Michelle Wingter da Silva (Nº USP 10783243)
  #	Matheus Carvalho Raimundo (Nº USP 10369014)
  #	Marcelo Duchêne (Nº USP 8596351)
  #

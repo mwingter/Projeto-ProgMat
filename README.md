@@ -3,8 +3,8 @@
 Neste repositório se encontra a parte 1 do trabalho de Programação Matemática.
 
 ## Integrantes
-* Julia, Nº USP XXXXX
-* Michelle, Nº USP XXXXX
+* Julia Carolina Frare Peixoto, Nº USP 10734727
+* Michelle Wingter da Silva, Nº USP 10783243
 * Matheus Carvalho Raimundo, Nº 10369014
 * Marcelo Duchêne, Nº USP 8596351
 
