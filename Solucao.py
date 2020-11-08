@@ -14,7 +14,7 @@ import re
  #	Julia (Nº USP XXXXX)
  #	Michelle (Nº USP XXXXX)
  #	Matheus Carvalho Raimundo (Nº USP 10369014)
- #	Marcelo (Nº USP XXXXX)
+ #	Marcelo Duchêne (Nº USP 8596351)
  #
  #	Programação Matemática: SME-0110 2020.2
  #
