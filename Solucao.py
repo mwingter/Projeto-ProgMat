@@ -4,6 +4,7 @@ from ortools.linear_solver import pywraplp
 import itertools
 import numpy as np
 import math
+import sys
 import re
 
 
@@ -62,6 +63,17 @@ while(True):
 		break
 print()
 
+if len(L) < 1:
+	print('== Solução ==')
+	print('\tVocê não forneceu nenhuma galáxia como entrada.')
+	print()
+	sys.exit(0)
+elif len(L) < 3:
+	print('== Solução ==')
+	print('\tVocê forneceu apenas %d galáxia/s como entrada. A solução é trivial.' % (len(L)))
+	print()
+	sys.exit(0)
+
 # Calcular custos, ou seja, distâncias percorridas pelo telescópio (variável C).
 C = [ ] # Armazenará os custos de locomoção do telescópio (da galáxia i para a galáxia j).
 euclidian_distance = lambda p1, p2: math.sqrt(math.pow(p2[0] - p1[0], 2) + math.pow(p2[1] - p1[1], 2)) # Função de distância euclidiana.
@@ -119,7 +131,7 @@ if status == pywraplp.Solver.OPTIMAL:
 	print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
 	for i in range(len(L)):
 		print('\tDa galáxia %d, vamos para a galáxia %d.' % (i+1, Z[i].index(1) + 1))
-	print('Caminho: 1', end = '')
+	print('\tCaminho: 1', end = '')
 	current = Z[0].index(1)
 	while current != 0:
 		print(' -> %d' % (current + 1), end='')
@@ -129,7 +141,7 @@ if status == pywraplp.Solver.OPTIMAL:
 else:
 	print()
 	print('== Solução ==')
-	print('O problema não possui uma solução ótima. :(')
+	print('\tO problema não possui uma solução ótima. :(')
 	print()
 
 
