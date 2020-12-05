@@ -62,13 +62,14 @@ while(True):
 	except EOFError:
 		break
 print()
+print('Número de galáxias =', len(L))
 
 if len(L) < 1:
 	print('== Solução ==')
 	print('\tVocê não forneceu nenhuma galáxia como entrada.')
 	print()
 	sys.exit(0)
-elif len(L) < 3:
+elif len(L) < 4:
 	print('== Solução ==')
 	print('\tVocê forneceu apenas %d galáxia/s como entrada. A solução é trivial.' % (len(L)))
 	print()
