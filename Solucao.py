@@ -37,7 +37,7 @@ INFINITY = solver.infinity()
 REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 MAX_EXECUTION_TIME = 10 # Tempo máximo de execução (em segundos).
-RESULT_IMG_PATH = "resultado.png"
+RESULT_IMG_PATH = "resultado.png" # Nome do arquivo em que a solução será salva como imagem.
 
 
 
@@ -51,7 +51,6 @@ def minIndex(arr):
 		if arr[i] < arr[minI]:
 			minI = i
 	return minI
-
 def gerarImagem():
 	### Gera uma imagem da solução encontrada, salva em disco, e exibe na tela (se suportado). ###
 	global Z, L, path
@@ -168,28 +167,30 @@ values = [ ]
 for i in range(len(L)):
 	values.append([ ])
 	for j in range(len(L)):
-		values[i].append(0)
-salesman1 = 0
-salesman2 = 0
-available = [ i for i in range(len(L)) if i != salesman1 ]
+		values[i].append(0) # Preencher solução inicial com tudo como '0'.
+salesman1 = 0 # Anda para frente.
+salesman2 = 0 # Anda para trás.
+available = [ i for i in range(len(L)) if i != salesman1 ] # Pontos disponíveis para andar.
 while len(available) > 0:
+	# Andar um ponto para frente (o mais próximo).
 	next_salesman1 = minIndex([ C[salesman1][i] for i in available ])
 	values[salesman1][available[next_salesman1]] = 1
 	salesman1 = available[next_salesman1]
 	available.pop(next_salesman1)
 	if len(available) < 1:
 		break
+	# Andar um ponto para trpas (o mais próximo).
 	next_salesman2 = minIndex([ C[i][salesman2] for i in available ])
 	values[available[next_salesman2]][salesman2] = 1
 	salesman2 = available[next_salesman2]
 	available.pop(next_salesman2)
 values[salesman1][salesman2] = 1
-variables = [ Z[i][j] for j in range(len(L)) for i in range(len(L)) ]
-values = [ values[i][j] for j in range(len(L)) for i in range(len(L)) ]
+variables = [ Z[i][j] for j in range(len(L)) for i in range(len(L)) ] # Matriz 2D -> Vetor 1D.
+values = [ values[i][j] for j in range(len(L)) for i in range(len(L)) ] # Matriz 2D -> Vetor 1D.
 solver.SetHint(variables, values) # Definir a solução inicial encontrada.
 
 # Definir tempo máximo de execução.
-solver.SetTimeLimit(1000 * MAX_EXECUTION_TIME)
+solver.SetTimeLimit(1000 * MAX_EXECUTION_TIME) # Multiplica por 1000 porque é em milisegundos.
 
 
 
