@@ -1,8 +1,9 @@
 #!python3
 
 from ortools.linear_solver import pywraplp
-import itertools
+import multiprocessing
 import numpy as np
+import time
 import math
 import sys
 import re
@@ -34,6 +35,7 @@ solver = pywraplp.Solver.CreateSolver('SCIP')
 INFINITY = solver.infinity()
 REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
+MAX_EXECUTION_TIME = 10 # Tempo máximo de execução (em segundos).
 
 
 
@@ -90,7 +92,10 @@ Z = [ ] # Armazenará a variável Z (matriz).
 for i in range(len(L)):
 	Z.append([ ])
 	for j in range(len(L)):
-		Z[i].append( solver.IntVar(0.0, INFINITY, 'Z_' + str(i) + '_' + str(j)) ) # Zij.
+		Z[i].append( solver.IntVar(0.0, 1.0, 'Z_' + str(i) + '_' + str(j)) ) # Zij.
+U = [ ] # Armazenará a variável extra u (vetor).
+for i in range(1, len(L)):
+	U.append( solver.IntVar(1.0, len(L), 'U_' + str(i)) )
 print('Número de variáveis =', solver.NumVariables())
 
 
@@ -100,35 +105,64 @@ for i in range(len(L)):
 	solver.Add(Z[i][i] == 0) # Zii = 0.
 	solver.Add(solver.Sum([Z[i][j] for j in range(len(L))]) == 1) # Somatório de j = 1 até N de (Zij) = 1, para todo i.
 	solver.Add(solver.Sum([Z[j][i] for j in range(len(L))]) == 1) # Somatório de j = 1 até N de (Zji) = 1, para todo i.
-print('Gerando restrições anti-ciclos... %.2f%%' % (0), end='')
-for n in range(2, len(L)):
-	print('\rGerando restrições anti-ciclos... %.2f%%' % (100 * (n - 2)/(len(L) - 2)), end='')
-	for s in itertools.combinations(range(len(L)), n):
-		sum_terms = [Z[x_row][y_row] for (x_row, y_row) in itertools.combinations_with_replacement(s, 2) if x_row != y_row]
-		sum_terms += [Z[y_row][x_row] for (x_row, y_row) in itertools.combinations_with_replacement(s, 2) if x_row != y_row]
-		solver.Add(solver.Sum(sum_terms) <= n - 1) # Somatório de i,j em Q de (Zji) <= |Q|, para todo Q subconjunto das galáxias.
-print('\rGerando restrições anti-ciclos... %.2f%%' % (100))
+for i in range(1, len(L)):
+	for j in range(1, len(L)):
+		if i == j:
+			continue
+		solver.Add(U[i - 1] - U[j - 1] + len(L) * Z[i][j] <= len(L) - 1)
 print('Número de restrições =', solver.NumConstraints())
 
 
 
 # Definir a função objetivo usando nossa modelagem.
-solver.Minimize(solver.Sum([np.dot(x_row, cost_row) for (x_row, cost_row) in zip(Z, C)])) # Min somatório de i,j em L de (Cij * Zij)
+solver.Minimize(solver.Sum([np.dot(z_row, c_row) for (z_row, c_row) in zip(Z, C)])) # Min somatório de i,j em L de (Cij * Zij)
 
 
 
-# Resolver utilizando o OR-Tools.
+# Definir uma solução inicial para o solver.
+variables = [ ]
+values = [ ]
+for i in range(len(L)):
+	minValue = min([ C[i][j] for j in range(len(C[i])) if i != j ])
+	minIndex = C[i].index(minValue)
+	for j in range(len(Z[i])):
+		variables.append(Z[i][j])
+		if(j == minIndex):
+			values.append(1)
+		else:
+			values.append(0)
+solver.SetHint(variables, values) # Definir solução inicial.
+
+# Definir tempo máximo de execução.
+solver.SetTimeLimit(1000 * MAX_EXECUTION_TIME)
+
+
+
+# Resolver utilizando o OR-Tools enquanto calcula o tempo de execução.
+start_time = time.time()
 status = solver.Solve()
+end_time = time.time()
+
+# Ajustar tempo de execução para texto legível.
+execution_time = end_time - start_time
+if execution_time < 60:
+	execution_time = '%.3fs' % (execution_time)
+else:
+	execution_time = '%dmin %.3fs' % (int(execution_time/60), execution_time%60.0)
 
 
 
 # Verificar se há solução e imprimir resultados.
-if status == pywraplp.Solver.OPTIMAL:
+if status != pywraplp.Solver.INFEASIBLE and status != pywraplp.Solver.NOT_SOLVED:
 	for i in range(len(L)):
 		for j in range(len(L)):
 			Z[i][j] = Z[i][j].solution_value()
 	print()
-	print('== Solução ==')
+	if status == pywraplp.Solver.OPTIMAL:
+		print('== Solução Ótima ==')
+	else:
+		print('== Solução Viável ==')
+	print('\tTempo de execução: %s' % (execution_time))
 	print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
 	for i in range(len(L)):
 		print('\tDa galáxia %d, vamos para a galáxia %d.' % (i+1, Z[i].index(1) + 1))
@@ -138,11 +172,13 @@ if status == pywraplp.Solver.OPTIMAL:
 		print(' -> %d' % (current + 1), end='')
 		current = Z[current].index(1)
 	print(' -> 1')
+	print('\t(uma imagem desse caminho foi salva em "%s")' % ('em construção...'))
 	print()
 else:
 	print()
-	print('== Solução ==')
-	print('\tO problema não possui uma solução ótima. :(')
+	print('== Sem Solução ==')
+	print('\tTempo de execução: %s' % (execution_time))
+	print('\tO problema não possui uma solução viável encontrada em tempo prático. :(')
 	print()
 
 
