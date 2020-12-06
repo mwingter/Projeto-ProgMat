@@ -1,6 +1,6 @@
 # Trabalho - Um Enigma das Galáxias
 ### Programação Matemática (SME-0110)
-Neste repositório se encontra a parte 1 do trabalho de Programação Matemática.
+Neste repositório se encontra o trabalho de Programação Matemática.
 
 ## Integrantes
 * Julia Carolina Frare Peixoto, Nº USP 10734727
