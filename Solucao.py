@@ -1,5 +1,6 @@
 #!python3
 
+from matplotlib import path as pltpath, patches as pltpatches, pyplot as plt
 from ortools.linear_solver import pywraplp
 import multiprocessing
 import numpy as np
@@ -36,6 +37,48 @@ INFINITY = solver.infinity()
 REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 MAX_EXECUTION_TIME = 10 # Tempo máximo de execução (em segundos).
+RESULT_IMG_PATH = "resultado.png"
+
+
+
+# Definição de funções usadas no código.
+def minIndex(arr):
+	### Encontra o índice do valor mínimo em um vetor. ###
+	if len(arr) < 0:
+		return -1
+	minI = 0
+	for i in range(1, len(arr)):
+		if arr[i] < arr[minI]:
+			minI = i
+	return minI
+
+def gerarImagem():
+	### Gera uma imagem da solução encontrada, salva em disco, e exibe na tela (se suportado). ###
+	global Z, L, path
+	path_pos = [ L[path[i]] for i in range(len(path)) ]
+	codes = [ pltpath.Path.MOVETO ] + [ pltpath.Path.LINETO for _ in range(1, len(path))]
+	p = pltpath.Path(path_pos, codes)
+	limx = [L[0][0], L[0][0], 0]
+	limy = [L[0][1], L[0][1], 0]
+	for pos in L:
+		if pos[0] < limx[0]:
+			limx[0] = pos[0]
+		if pos[0] > limx[1]:
+			limx[1] = pos[0]
+		if pos[1] < limy[0]:
+			limy[0] = pos[1]
+		if pos[1] > limy[1]:
+			limy[1] = pos[1]
+	limx[2] = 0.02 * abs(limx[1] - limx[0])
+	limy[2] = 0.02 * abs(limy[1] - limy[0])
+	fig, ax = plt.subplots()
+	patch = pltpatches.PathPatch(p, facecolor='black', fill=False, lw=2, alpha=0.75)
+	ax.add_patch(patch)
+	ax.plot([ p[0] for p in L ], [ p[1] for p in L ], 'bo')
+	ax.set_xlim(limx[0] - limx[2], limx[1] + limx[2])
+	ax.set_ylim(limy[0] - limy[2], limy[1] + limy[2])
+	plt.savefig(RESULT_IMG_PATH)
+	plt.show()
 
 
 
@@ -63,6 +106,7 @@ while(True):
 		print("Linha ignorada por ser incompatível. Por favor, use o seguinte formato: posição_x posição_y")
 	except EOFError:
 		break
+print()
 print()
 print('Número de galáxias =', len(L))
 
@@ -120,18 +164,29 @@ solver.Minimize(solver.Sum([np.dot(z_row, c_row) for (z_row, c_row) in zip(Z, C)
 
 
 # Definir uma solução inicial para o solver.
-variables = [ ]
 values = [ ]
 for i in range(len(L)):
-	minValue = min([ C[i][j] for j in range(len(C[i])) if i != j ])
-	minIndex = C[i].index(minValue)
-	for j in range(len(Z[i])):
-		variables.append(Z[i][j])
-		if(j == minIndex):
-			values.append(1)
-		else:
-			values.append(0)
-solver.SetHint(variables, values) # Definir solução inicial.
+	values.append([ ])
+	for j in range(len(L)):
+		values[i].append(0)
+salesman1 = 0
+salesman2 = 0
+available = [ i for i in range(len(L)) if i != salesman1 ]
+while len(available) > 0:
+	next_salesman1 = minIndex([ C[salesman1][i] for i in available ])
+	values[salesman1][available[next_salesman1]] = 1
+	salesman1 = available[next_salesman1]
+	available.pop(next_salesman1)
+	if len(available) < 1:
+		break
+	next_salesman2 = minIndex([ C[i][salesman2] for i in available ])
+	values[available[next_salesman2]][salesman2] = 1
+	salesman2 = available[next_salesman2]
+	available.pop(next_salesman2)
+values[salesman1][salesman2] = 1
+variables = [ Z[i][j] for j in range(len(L)) for i in range(len(L)) ]
+values = [ values[i][j] for j in range(len(L)) for i in range(len(L)) ]
+solver.SetHint(variables, values) # Definir a solução inicial encontrada.
 
 # Definir tempo máximo de execução.
 solver.SetTimeLimit(1000 * MAX_EXECUTION_TIME)
@@ -148,15 +203,26 @@ execution_time = end_time - start_time
 if execution_time < 60:
 	execution_time = '%.3fs' % (execution_time)
 else:
-	execution_time = '%dmin %.3fs' % (int(execution_time/60), execution_time%60.0)
+	execution_time = int(execution_time)
+	execution_time = '%dmin %ds' % (int(execution_time/60), execution_time%60)
 
 
 
 # Verificar se há solução e imprimir resultados.
 if status != pywraplp.Solver.INFEASIBLE and status != pywraplp.Solver.NOT_SOLVED:
+
+	# Gerar resultados.
 	for i in range(len(L)):
 		for j in range(len(L)):
 			Z[i][j] = Z[i][j].solution_value()
+	path = [ 0 ]
+	current = Z[0].index(1)
+	while current != 0:
+		path.append(current)
+		current = Z[current].index(1)
+	path.append(0)
+
+	# Exibir no terminal.
 	print()
 	if status == pywraplp.Solver.OPTIMAL:
 		print('== Solução Ótima ==')
@@ -164,16 +230,16 @@ if status != pywraplp.Solver.INFEASIBLE and status != pywraplp.Solver.NOT_SOLVED
 		print('== Solução Viável ==')
 	print('\tTempo de execução: %s' % (execution_time))
 	print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
-	for i in range(len(L)):
-		print('\tDa galáxia %d, vamos para a galáxia %d.' % (i+1, Z[i].index(1) + 1))
-	print('\tCaminho: 1', end = '')
-	current = Z[0].index(1)
-	while current != 0:
-		print(' -> %d' % (current + 1), end='')
-		current = Z[current].index(1)
-	print(' -> 1')
-	print('\t(uma imagem desse caminho foi salva em "%s")' % ('em construção...'))
+	print('\tInterações do Simplex: %d' % (solver.iterations()))
+	print('\tNós explorados: %d' % (solver.nodes()))
+	print('\tCaminho resultado: L1', end = '')
+	for i in range(1, len(path)):
+		print(' -> L%d' % (path[i] + 1), end='')
 	print()
+	gerarImagem()
+	print('\t(uma imagem desse caminho foi salva em "%s")' % (RESULT_IMG_PATH))
+	print()
+
 else:
 	print()
 	print('== Sem Solução ==')
