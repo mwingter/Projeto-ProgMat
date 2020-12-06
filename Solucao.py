@@ -2,7 +2,6 @@
 
 from matplotlib import path as pltpath, patches as pltpatches, pyplot as plt
 from ortools.linear_solver import pywraplp
-import multiprocessing
 import numpy as np
 import time
 import math
@@ -37,7 +36,7 @@ INFINITY = solver.infinity()
 REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução (em segundos).
-RESULT_IMG_PATH = "resultado.png" # Nome do arquivo em que a solução será salva como imagem.
+RESULT_IMG_PATH = "solucao-encontrada.png" # Nome do arquivo em que a solução será salva como imagem.
 
 
 
@@ -71,13 +70,27 @@ def gerarImagem():
 	limx[2] = 0.02 * abs(limx[1] - limx[0])
 	limy[2] = 0.02 * abs(limy[1] - limy[0])
 	_, ax = plt.subplots()
+	ax.set_xlabel('x')
+	ax.set_ylabel('y')
 	patch = pltpatches.PathPatch(p, facecolor='black', fill=False, lw=2, alpha=0.75)
 	ax.add_patch(patch)
-	ax.plot([ p[0] for p in L ], [ p[1] for p in L ], 'bo')
+	ax.plot([ L[p][0] for p in path[1:len(path)-2] ], [ L[p][1] for p in path[1:len(path)-2] ], 'b.')
+	ax.plot([ L[path[0]][0] ], [ L[path[0]][1] ], 'b*')
+	ax.plot([ L[path[len(p) - 2]][0] ], [ L[path[len(p) - 2]][1] ], 'rx')
 	ax.set_xlim(limx[0] - limx[2], limx[1] + limx[2])
 	ax.set_ylim(limy[0] - limy[2], limy[1] + limy[2])
 	plt.savefig(RESULT_IMG_PATH)
 	plt.show()
+def swap2opt(i, j):
+	### Função suporte para o algoritmo da heurística 2-OPT. ###
+	global path, C
+	new_path = path.copy()
+	if i < j:
+		new_path[i:j + 1] = reversed(new_path[i:j + 1])
+	cost_sum = 0
+	for i in range(1, len(new_path)):
+		cost_sum += C[new_path[i - 1]][new_path[i]]
+	return new_path, cost_sum
 
 
 
@@ -179,7 +192,7 @@ while len(available) > 0:
 	available.pop(next_salesman1)
 	if len(available) < 1:
 		break
-	# Andar um ponto para trpas (o mais próximo).
+	# Andar um ponto para trás (o mais próximo).
 	next_salesman2 = minIndex([ C[i][salesman2] for i in available ])
 	values[available[next_salesman2]][salesman2] = 1
 	salesman2 = available[next_salesman2]
@@ -199,10 +212,7 @@ print("Buscando solução em tempo máximo de %dmin %ds..." % (MAX_EXECUTION_TIM
 start_time = time.time()
 status = solver.Solve()
 end_time = time.time()
-
-# Ajustar tempo de execução para texto legível.
 execution_time = int(end_time - start_time)
-execution_time = '%dmin %ds' % (int(execution_time/60), execution_time%60)
 
 
 
@@ -210,8 +220,8 @@ execution_time = '%dmin %ds' % (int(execution_time/60), execution_time%60)
 if status == pywraplp.Solver.INFEASIBLE or status == pywraplp.Solver.NOT_SOLVED:
 	print()
 	print('== Sem Solução ==')
-	print('\tTempo de execução: %s' % (execution_time))
 	print('\tO problema não possui uma solução viável encontrada em tempo prático. :(')
+	print('\tTempo de execução: %dmin %ds' % (int(execution_time/60), execution_time%60))
 	print()
 	sys.exit(0)
 
@@ -227,38 +237,28 @@ while current != 0:
 path.append(0)
 
 # Melhorar com algoritmo 2-OPT.
-
-def swap2opt(i, j):
-	global path
-	new_path = path.copy()
-	new_path[i:j + 1] = reversed(new_path[i:j + 1])
-	return new_path
-
-def calculate2opt(calc_path):
-	global C
-	sum = 0
-	for i in range(1, len(calc_path)):
-		sum += C[calc_path[i - 1]][calc_path[i]]
-	return sum
-
 print("Otimizando com heurística 2-OPT...")
 current_objective_value = solver.Objective().Value()
 old_objective_value = current_objective_value + 1
 start_2opt_time = time.time()
-while old_objective_value > current_objective_value and time.time() - start_2opt_time < MAX_EXECUTION_TIME:
-	old_objective_value = current_objective_value
-	for i in range(1, len(L) - 1):
-		for j in range(i + 1, len(L) - 1):
-			new_path = swap2opt(i, j)
-			new_objective_value = calculate2opt(new_path)
-			if new_objective_value < current_objective_value:
-				path = new_path
-				current_objective_value = new_objective_value
-				break
-		else:
-			continue
-		break
-
+try:
+	while old_objective_value > current_objective_value and time.time() - start_2opt_time < MAX_EXECUTION_TIME - execution_time:
+		old_objective_value = current_objective_value
+		for i in range(1, len(L) - 1):
+			for j in range(i + 1, len(L) - 1):
+				new_path, new_objective_value = swap2opt(i, j)
+				if new_objective_value < current_objective_value:
+					path = new_path
+					current_objective_value = new_objective_value
+					break
+			else:
+				continue
+			break
+	if old_objective_value > current_objective_value:
+		print("Otimização 2-OPT esgotada.")
+except KeyboardInterrupt:
+	print("Otimização 2-OPT interrompida.")
+	_, current_objective_value = swap2opt(0, 0)
 
 # Exibir no terminal.
 print()
@@ -266,11 +266,11 @@ if status == pywraplp.Solver.OPTIMAL:
 	print('== Solução Ótima ==')
 else:
 	print('== Solução Viável ==')
-print('\tTempo de execução: %s' % (execution_time))
-print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
 print('\tInterações do Simplex: %d' % (solver.iterations()))
 print('\tNós explorados: %d' % (solver.nodes()))
+print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
 print('\tValor da função objetivo após heurísticas: %.3f' % (current_objective_value))
+print('\tTempo de execução: %dmin %ds' % (int(execution_time/60), execution_time%60))
 print('\tCaminho resultado: L%d' % (path[0] + 1), end = '')
 for i in range(1, len(path)):
 	print(' -> L%d' % (path[i] + 1), end='')
