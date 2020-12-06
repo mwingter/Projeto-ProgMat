@@ -36,7 +36,7 @@ solver = pywraplp.Solver.CreateSolver('SCIP')
 INFINITY = solver.infinity()
 REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
-MAX_EXECUTION_TIME = 10 # Tempo máximo de execução (em segundos).
+MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução (em segundos).
 RESULT_IMG_PATH = "resultado.png" # Nome do arquivo em que a solução será salva como imagem.
 
 
@@ -70,7 +70,7 @@ def gerarImagem():
 			limy[1] = pos[1]
 	limx[2] = 0.02 * abs(limx[1] - limx[0])
 	limy[2] = 0.02 * abs(limy[1] - limy[0])
-	fig, ax = plt.subplots()
+	_, ax = plt.subplots()
 	patch = pltpatches.PathPatch(p, facecolor='black', fill=False, lw=2, alpha=0.75)
 	ax.add_patch(patch)
 	ax.plot([ p[0] for p in L ], [ p[1] for p in L ], 'bo')
@@ -195,57 +195,88 @@ solver.SetTimeLimit(1000 * MAX_EXECUTION_TIME) # Multiplica por 1000 porque é e
 
 
 # Resolver utilizando o OR-Tools enquanto calcula o tempo de execução.
+print("Buscando solução em tempo máximo de %dmin %ds..." % (MAX_EXECUTION_TIME/60, MAX_EXECUTION_TIME%60))
 start_time = time.time()
 status = solver.Solve()
 end_time = time.time()
 
 # Ajustar tempo de execução para texto legível.
-execution_time = end_time - start_time
-if execution_time < 60:
-	execution_time = '%.3fs' % (execution_time)
-else:
-	execution_time = int(execution_time)
-	execution_time = '%dmin %ds' % (int(execution_time/60), execution_time%60)
+execution_time = int(end_time - start_time)
+execution_time = '%dmin %ds' % (int(execution_time/60), execution_time%60)
 
 
 
-# Verificar se há solução e imprimir resultados.
-if status != pywraplp.Solver.INFEASIBLE and status != pywraplp.Solver.NOT_SOLVED:
-
-	# Gerar resultados.
-	for i in range(len(L)):
-		for j in range(len(L)):
-			Z[i][j] = Z[i][j].solution_value()
-	path = [ 0 ]
-	current = Z[0].index(1)
-	while current != 0:
-		path.append(current)
-		current = Z[current].index(1)
-	path.append(0)
-
-	# Exibir no terminal.
-	print()
-	if status == pywraplp.Solver.OPTIMAL:
-		print('== Solução Ótima ==')
-	else:
-		print('== Solução Viável ==')
-	print('\tTempo de execução: %s' % (execution_time))
-	print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
-	print('\tInterações do Simplex: %d' % (solver.iterations()))
-	print('\tNós explorados: %d' % (solver.nodes()))
-	print('\tCaminho resultado: L1', end = '')
-	for i in range(1, len(path)):
-		print(' -> L%d' % (path[i] + 1), end='')
-	print()
-	gerarImagem()
-	print('\t(uma imagem desse caminho foi salva em "%s")' % (RESULT_IMG_PATH))
-	print()
-
-else:
+# Verificar se não encontrou nenhuma solução, e se for o caso encerrar.
+if status == pywraplp.Solver.INFEASIBLE or status == pywraplp.Solver.NOT_SOLVED:
 	print()
 	print('== Sem Solução ==')
 	print('\tTempo de execução: %s' % (execution_time))
 	print('\tO problema não possui uma solução viável encontrada em tempo prático. :(')
 	print()
+	sys.exit(0)
+
+# Gerar resultados.
+for i in range(len(L)):
+	for j in range(len(L)):
+		Z[i][j] = Z[i][j].solution_value()
+path = [ 0 ]
+current = Z[0].index(1)
+while current != 0:
+	path.append(current)
+	current = Z[current].index(1)
+path.append(0)
+
+# Melhorar com algoritmo 2-OPT.
+
+def swap2opt(i, j):
+	global path
+	new_path = path.copy()
+	new_path[i:j + 1] = reversed(new_path[i:j + 1])
+	return new_path
+
+def calculate2opt(calc_path):
+	global C
+	sum = 0
+	for i in range(1, len(calc_path)):
+		sum += C[calc_path[i - 1]][calc_path[i]]
+	return sum
+
+print("Otimizando com heurística 2-OPT...")
+current_objective_value = solver.Objective().Value()
+old_objective_value = current_objective_value + 1
+start_2opt_time = time.time()
+while old_objective_value > current_objective_value and time.time() - start_2opt_time < MAX_EXECUTION_TIME:
+	old_objective_value = current_objective_value
+	for i in range(1, len(L) - 1):
+		for j in range(i + 1, len(L) - 1):
+			new_path = swap2opt(i, j)
+			new_objective_value = calculate2opt(new_path)
+			if new_objective_value < current_objective_value:
+				path = new_path
+				current_objective_value = new_objective_value
+				break
+		else:
+			continue
+		break
+
+
+# Exibir no terminal.
+print()
+if status == pywraplp.Solver.OPTIMAL:
+	print('== Solução Ótima ==')
+else:
+	print('== Solução Viável ==')
+print('\tTempo de execução: %s' % (execution_time))
+print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
+print('\tInterações do Simplex: %d' % (solver.iterations()))
+print('\tNós explorados: %d' % (solver.nodes()))
+print('\tValor da função objetivo após heurísticas: %.3f' % (current_objective_value))
+print('\tCaminho resultado: L%d' % (path[0] + 1), end = '')
+for i in range(1, len(path)):
+	print(' -> L%d' % (path[i] + 1), end='')
+print()
+gerarImagem()
+print('\t(uma imagem desse caminho foi salva em "%s")' % (RESULT_IMG_PATH))
+print()
 
 
