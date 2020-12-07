@@ -38,7 +38,7 @@ REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+
 MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução do solver (em segundos).
 MAX_2OPT_EXECUTION_TIME = 60*1 # Tempo máximo de execução da heurística (em segundos). Recomendado não alterar.
 RESULT_IMG_PATH = "solucao-encontrada.png" # Nome do arquivo em que a solução será salva como imagem.
-INVERT_AXIS = True # Inverter eixos x/y da entrada (só muda efetivamente a imagem final gerada).
+INVERT_AXIS = False # Inverter eixos x/y da entrada (só muda efetivamente a imagem final gerada).
 ROUND_POINTS = False # Realizar arredondamentos nos pontos ou não (True ou False).
 ROUND_EUCLIDIAN = True # Realizar arredondamentos na distância euclidiana ou não (True ou False).
 
