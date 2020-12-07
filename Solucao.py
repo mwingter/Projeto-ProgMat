@@ -261,6 +261,8 @@ try:
 except KeyboardInterrupt:
 	print("Otimização 2-OPT interrompida.")
 	_, current_objective_value = swap2opt(0, 0)
+end_2opt_time = time.time()
+execution_2opt_time = int(end_2opt_time - start_2opt_time)
 
 # Exibir no terminal.
 print()
@@ -272,7 +274,8 @@ print('\tInterações do Simplex: %d' % (solver.iterations()))
 print('\tNós explorados: %d' % (solver.nodes()))
 print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
 print('\tValor da função objetivo após heurísticas: %.3f' % (current_objective_value))
-print('\tTempo de execução: %dmin %ds' % (int(execution_time/60), execution_time%60))
+print('\tTempo de execução do solver: %dmin %ds' % (int(execution_time/60), execution_time%60))
+print('\tTempo de execução do 2-OPT: %dmin %ds' % (int(execution_2opt_time/60), execution_2opt_time%60))
 print('\tCaminho resultado: L%d' % (path[0] + 1), end = '')
 for i in range(1, len(path)):
 	print(' -> L%d' % (path[i] + 1), end='')
