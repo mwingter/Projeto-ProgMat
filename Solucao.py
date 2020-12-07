@@ -38,6 +38,9 @@ REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+
 MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução do solver (em segundos).
 MAX_2OPT_EXECUTION_TIME = 60*1 # Tempo máximo de execução da heurística (em segundos). Recomendado não alterar.
 RESULT_IMG_PATH = "solucao-encontrada.png" # Nome do arquivo em que a solução será salva como imagem.
+INVERT_AXIS = True # Inverter eixos x/y da entrada (só muda efetivamente a imagem final gerada).
+ROUND_POINTS = False # Realizar arredondamentos nos pontos ou não (True ou False).
+ROUND_EUCLIDIAN = True # Realizar arredondamentos na distância euclidiana ou não (True ou False).
 
 
 
@@ -134,9 +137,22 @@ elif len(L) < 4:
 	print()
 	sys.exit(0)
 
+# Inverter eixos x/y da entrada se necessário.
+if INVERT_AXIS:
+	for i in range(len(L)):
+		L[i] = (L[i][1], L[i][0])
+
+# Arredondar valores dos pontos se necessário.
+if ROUND_POINTS:
+	for i in range(len(L)):
+		L[i] = (round(L[i][0]), round(L[i][1]))
+
 # Calcular custos, ou seja, distâncias percorridas pelo telescópio (variável C).
 C = [ ] # Armazenará os custos de locomoção do telescópio (da galáxia i para a galáxia j).
-euclidian_distance = lambda p1, p2: math.sqrt(math.pow(p2[0] - p1[0], 2) + math.pow(p2[1] - p1[1], 2)) # Função de distância euclidiana.
+if ROUND_EUCLIDIAN:
+	euclidian_distance = lambda p1, p2: round(math.sqrt(math.pow(p2[0] - p1[0], 2) + math.pow(p2[1] - p1[1], 2))) # Função de distância euclidiana arredondada.
+else:
+	euclidian_distance = lambda p1, p2: math.sqrt(math.pow(p2[0] - p1[0], 2) + math.pow(p2[1] - p1[1], 2)) # Função de distância euclidiana.
 for i in range(len(L)):
 	C.append([ ])
 	for j in range(len(L)):
