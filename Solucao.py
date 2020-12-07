@@ -91,6 +91,8 @@ def swap2opt(i, j):
 	new_path = path.copy()
 	if i < j:
 		new_path[i:j + 1] = reversed(new_path[i:j + 1])
+		if i == 0: # Caso em que troca o nó inicial.
+			new_path[len(new_path) - 1] = new_path[0]
 	cost_sum = 0
 	for i in range(1, len(new_path)):
 		cost_sum += C[new_path[i - 1]][new_path[i]]
@@ -262,8 +264,8 @@ start_2opt_time = time.time()
 try:
 	while old_objective_value > current_objective_value and time.time() - start_2opt_time < max_2opt_time:
 		old_objective_value = current_objective_value
-		for i in range(1, len(L) - 1):
-			for j in range(i + 1, len(L) - 1):
+		for i in range(len(L) - 1):
+			for j in range(i + 1, len(L) - 2):
 				new_path, new_objective_value = swap2opt(i, j)
 				if new_objective_value < current_objective_value:
 					path = new_path
