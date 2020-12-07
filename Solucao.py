@@ -291,7 +291,7 @@ print('\tNós explorados: %d' % (solver.nodes()))
 print('\tValor da função objetivo: %.3f' % (solver.Objective().Value()))
 print('\tValor da função objetivo após heurísticas: %.3f' % (current_objective_value))
 print('\tTempo de execução do solver: %dmin %ds' % (int(execution_time/60), execution_time%60))
-print('\tTempo de execução do 2-OPT: %dmin %ds' % (int(execution_2opt_time/60), execution_2opt_time%60))
+print('\tTempo de execução da heurística: %dmin %ds' % (int(execution_2opt_time/60), execution_2opt_time%60))
 print('\tCaminho resultado: L%d' % (path[0] + 1), end = '')
 for i in range(1, len(path)):
 	print(' -> L%d' % (path[i] + 1), end='')
