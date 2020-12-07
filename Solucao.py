@@ -35,7 +35,8 @@ solver = pywraplp.Solver.CreateSolver('SCIP')
 INFINITY = solver.infinity()
 REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
-MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução (em segundos).
+MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução do solver (em segundos).
+MAX_2OPT_EXECUTION_TIME = 60*1 # Tempo máximo de execução da heurística (em segundos). Recomendado não alterar.
 RESULT_IMG_PATH = "solucao-encontrada.png" # Nome do arquivo em que a solução será salva como imagem.
 
 
@@ -240,9 +241,10 @@ path.append(0)
 print("Otimizando com heurística 2-OPT...")
 current_objective_value = solver.Objective().Value()
 old_objective_value = current_objective_value + 1
+max_2opt_time = max(0, MAX_EXECUTION_TIME - execution_time) + MAX_2OPT_EXECUTION_TIME
 start_2opt_time = time.time()
 try:
-	while old_objective_value > current_objective_value and time.time() - start_2opt_time < MAX_EXECUTION_TIME - execution_time:
+	while old_objective_value > current_objective_value and time.time() - start_2opt_time < max_2opt_time:
 		old_objective_value = current_objective_value
 		for i in range(1, len(L) - 1):
 			for j in range(i + 1, len(L) - 1):
