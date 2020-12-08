@@ -6,6 +6,7 @@ import numpy as np
 import time
 import math
 import sys
+import os
 import re
 
 
@@ -30,19 +31,22 @@ import re
 
 
 
-# Primeiro, vamos instanciar a classe do nosso solver (OR-Tools) e declarar constantes usadas ao longo do código.
-solver = pywraplp.Solver.CreateSolver('SCIP')
-INFINITY = solver.infinity()
-REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
-REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
+# Definições do programa.
 MAX_EXECUTION_TIME = 60*10 # Tempo máximo de execução do solver (em segundos).
 MAX_2OPT_EXECUTION_TIME = 60*1 # Tempo máximo de execução da heurística (em segundos). Recomendado não alterar.
 RESULT_IMG_PATH = "solucao-encontrada.png" # Nome do arquivo em que a solução será salva como imagem.
 INVERT_AXIS = False # Inverter eixos x/y da entrada (só muda efetivamente a imagem final gerada).
 ROUND_POINTS = False # Realizar arredondamentos nos pontos ou não (True ou False).
 ROUND_EUCLIDIAN = True # Realizar arredondamentos na distância euclidiana ou não (True ou False).
+SOLVER_NAME = 'SCIP' # Use 'SCIP' ou 'CP-SAT'.
 
 
+
+# Primeiro, vamos instanciar a classe do nosso solver (OR-Tools) e declarar constantes usadas ao longo do código.
+solver = pywraplp.Solver.CreateSolver(SOLVER_NAME)
+INFINITY = solver.infinity()
+REGEX_3NUMBERS = re.compile(r'^\s*[0-9]+\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
+REGEX_2NUMBERS = re.compile(r'^\s*([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s+([+-]?[0-9]+(?:\.[0-9]+)?|[+-]?\.[0-9]+)\s*$') # Usado no código.
 
 # Definição de funções usadas no código.
 def minIndex(arr):
@@ -223,6 +227,14 @@ solver.SetHint(variables, values) # Definir a solução inicial encontrada.
 
 # Definir tempo máximo de execução.
 solver.SetTimeLimit(1000 * MAX_EXECUTION_TIME) # Multiplica por 1000 porque é em milisegundos.
+
+# Definir processamento paralelo, se o solver for o 'CP-SAT'.
+if SOLVER_NAME == 'CP-SAT':
+	cpu_count = os.cpu_count()
+	if cpu_count is None:
+		solver.SetNumThreads(2)
+	else:
+		solver.SetNumThreads(max(2, min(64, cpu_count)))
 
 
 
